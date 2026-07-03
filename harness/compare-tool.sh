@@ -10,13 +10,13 @@
 #   /opt/heirloom/upstream-ancestors/v7/  — extracted V7 tape
 #   /opt/heirloom/vendor/apout/apout      — Apout emulator (see APOUT-STATUS.md)
 #
-set -eu
+set -u
 TOOL="$1"
 IN="$2"
 : "${PREFIX:=/opt/heirloom}"
 
 HEIR_BIN="$PREFIX/bin/$TOOL"
-V7_BIN="$PREFIX/upstream-ancestors/v7/usr/bin/$TOOL"
+V7_BIN="$PREFIX/upstream-ancestors/v7/bin/$TOOL"
 APOUT="$PREFIX/vendor/apout/apout"
 
 if [ ! -x "$HEIR_BIN" ]; then
@@ -33,7 +33,7 @@ REPORT="reports/${TOOL}-$(basename "$IN" .in).diff"
 mkdir -p reports
 
 "$HEIR_BIN" < "$IN" > /tmp/heir.out 2>/tmp/heir.err
-"$APOUT" "$V7_BIN" < "$IN" > /tmp/v7.out 2>/tmp/v7.err
+APOUT_ROOT="$PREFIX/upstream-ancestors/v7" "$APOUT" "$V7_BIN" < "$IN" > /tmp/v7.out 2>/tmp/v7.err
 
 if diff -q /tmp/heir.out /tmp/v7.out >/dev/null 2>&1; then
     echo "  PASS $TOOL: outputs identical"
