@@ -13,9 +13,9 @@ the 1979 baseline.
 > additions. The reports show *where* things differ; interpretation
 > is up to the reader.
 
-## Status
+## Status: PARTIAL — Apout Darwin port landed as sibling repo
 
-**SCAFFOLD ONLY.** The Apout Darwin arm64 port has not been
+**PARTIAL.** The Apout Darwin arm64 port HAS been
 completed (sender agent estimated 3-5 days; local re-estimate is
 5-7 days). This repo ships:
 

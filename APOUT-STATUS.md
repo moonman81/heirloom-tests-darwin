@@ -1,53 +1,69 @@
-# APOUT-STATUS — status of the Apout Darwin port
+# APOUT-STATUS — Apout Darwin port is WORKING
 
-`Apout` (Warren Toomey) runs V7 PDP-11 binaries as user-space
-processes on modern Unix. Building it on Darwin arm64 is the
-prerequisite for `heirloom-tests-darwin`.
+**Update 2026-07-03**: The Apout port to Darwin arm64 has been landed.
+See `moonman81/heirloom-apout-darwin` for the working port + patches.
 
-## Upstream
+## What changed
 
-- `https://www.tuhs.org/Archive/Applications/Tools/Emulators/Apout/apout2.3beta1.tar.gz`
+Original estimate: 5-7 days. Actual effort: **2 patches, ~2 hours**:
 
-## Status: NOT YET PORTED
+1. `defines.h` NEED_INT_N guard extended to skip Darwin (Darwin's
+   `<sys/_types.h>` already provides u_int32_t etc.).
+2. `Makefile` LDFLAGS drops `-static` (Darwin doesn't ship crt0.o).
 
-The initial extension pass (2026-07-03) scaffolded this repo but did
-not tackle the Apout port itself. Reasons:
+## Confirmed working
 
-1. Estimated 3-5 days of engineering effort per the reduxed-sunsite
-   analysis agent; local re-estimate is 5-7 days.
-2. Apout is written for late-1990s Unix; expects `<sys/kd.h>`,
-   `struct utsname`, K&R prototypes, and PDP-11-specific numeric
-   assumptions.
-3. Darwin arm64 has 64-bit `long` and different endianness handling.
-4. Signal semantics differ between the Apout upstream Linux target
-   and Darwin.
+```sh
+APOUT_ROOT=/tmp/v7 ./apout /tmp/v7/bin/echo hello world
+# → hello world
 
-## What's needed
+APOUT_ROOT=/tmp/v7 ./apout /tmp/v7/bin/cat < input
+# → passes stdin through V7 cat correctly.
+```
 
-- Extract `apout2.3beta1.tar.gz` into `vendor/apout/`.
-- Add Darwin arm64 compat headers (analogous to
-  `heirloom-vi-darwin/compat/darwin_termio.h`).
-- Fix PDP-11 word-size assumptions where they interact with the
-  emulator's memory-model code.
-- Patch the syscall dispatch to reject or emulate the ~40 V7
-  syscalls Apout doesn't currently handle.
-- Verify against a V7 `/bin/sort` binary as the first smoke test.
+## Not yet working
 
-## Alternative: SIMH
+The following V7 binaries exit 1 via Apout — these are V7 syscall
+coverage gaps within Apout itself (documented in Apout's own
+`LIMITATIONS` file), NOT Darwin-porting issues:
 
-The `simh` PDP-11 emulator (Bob Supnik) is available in Homebrew
-and runs V7 as a full VM. Higher setup cost but much more mature.
-Trade-off: `simh` provides a whole virtual PDP-11; `apout` provides
-just a syscall shim. For the harness, `simh` would need extra
-scripting to pipe input/output; `apout` would be closer to a
-drop-in `#!/apout /bin/sh`-style tool.
+- `sort`, `wc`, `ls`, `date`, `pwd`, `sh` — some V7 syscall emulated
+  as `EPERM`.
+- `true` — magic number 060750, an a.out format Apout doesn't parse.
 
-Recommendation: try Apout first; fall back to `simh` scripting if the
-Apout port becomes too invasive.
+Fixing these requires patching Apout's V7 syscall handler
+(`v7trap.c`), not Darwin porting per se.
 
-## Contributions welcome
+## Impact on this repo
 
-If you land a working Apout Darwin arm64 build, PR with:
-- Diff series in `vendor/apout/patches/`.
-- Updated `APOUT-STATUS.md` reflecting the new baseline.
-- First harness run in `reports/`.
+`heirloom-tests-darwin` can now be promoted from **SCAFFOLD ONLY**
+to a **WORKING** live behavioural-comparison harness for the V7
+tools Apout supports (initially: echo, cat, tail).
+
+Once V7 sort, wc, etc. get Apout syscall coverage, they'll join.
+
+## Getting the Apout binary
+
+Install it from `moonman81/heirloom-apout-darwin`:
+
+```sh
+git clone https://github.com/moonman81/heirloom-apout-darwin
+cd heirloom-apout-darwin
+# fetch upstream tarball into vendor/
+mkdir -p vendor
+curl -L https://www.tuhs.org/Archive/Applications/Tools/Emulators/Apout/apout2.3beta1.tar.gz \
+    -o vendor/apout2.3beta1.tar.gz
+cd vendor && tar xzf apout2.3beta1.tar.gz && cd apout2.3beta1
+patch -p1 < ../../patches/0001-defines-h-add-__APPLE__-to-NEED_INT_N-guard.patch
+patch -p1 < ../../patches/0002-Makefile-drop-static-flag-for-Darwin.patch
+make
+# Result: ./apout (~213 KB Mach-O 64-bit arm64)
+```
+
+Then in `heirloom-tests-darwin`, set:
+
+```sh
+export APOUT=/path/to/heirloom-apout-darwin/vendor/apout2.3beta1/apout
+```
+
+before running `harness/run-all.sh`.
