@@ -82,17 +82,24 @@ Research Unix through V10 (1989) but removed by AT&T SVR4 (~1988).
 Heirloom's `heirloom-toolchest-070715` inherits from OpenSolaris (2005),
 which had SVR4 semantics, so the `-h` synonym stayed dropped.
 
-## Documentation-vs-implementation drift within Heirloom
+## Documentation retraction (was Finding 4)
 
-**Finding 4**: The Heirloom `od(1)` man page lists `-h` as a valid
-option:
+**Finding 4 — RETRACTED**: An initial reading of the survey
+suggested the man page listed `-h` as a valid option but the binary
+rejected it.  On re-inspection, the man page does NOT mention `-h`.
+The initial misread came from confusion when `od -h` opened the man
+page (via the `heirloom_flags` shim's default `-h` → man behaviour) —
+the man page shown at that point does NOT itself list `-h` among the
+supported flags.
 
-    -h     Interpret two-byte words in hexadecimal.
+So the observation stands but the conclusion is different: there is
+NO Heirloom-internal doc drift on `od -h`.  The man page and binary
+agree — neither documents nor implements `-h`.
 
-but the binary rejects `-h` with `od: bad flag -h`. The man page and
-binary diverge. This is Heirloom-internal drift, not a port drift.
-Follow-up: file upstream at heirloom.sourceforge.net (though unmaintained
-since 2008).
+The behaviour the user sees when running `od -h` on a Heirloom binary
+is: shim intercepts `-h` (default behaviour when `HF_H_TAKEN` is not
+set) and opens the man page.  That is arguably good UX — the user
+tried an undocumented flag and got documentation.
 
 ## Apout V7-syscall coverage assessment
 
@@ -149,11 +156,15 @@ For `od(1)`:
 
 - **0** cases of real drift between Heirloom's four personality variants.
 - **0** cases of real drift between Heirloom and Bell Labs V8/V9/V10.
-- **1** documented historical drift: V8→SVR4 dropped `-h` synonym.
-- **1** Heirloom-internal doc drift: man page says `-h` supported;
-  binary rejects it.
+- **1** documented historical drift: V8/V9/V10 supported `-h` as a
+  `-x` synonym; SVR4 dropped it; Heirloom (SVR4 lineage) correctly
+  preserves the removal.
 - **All** V7-via-Apout drifts are Apout syscall-coverage limitations,
   not real behavioural drift.
+
+**Correction**: A prior version of this document listed a fourth
+finding claiming Heirloom-internal doc drift on `-h`.  On re-inspection
+the man page does not mention `-h`; the finding was retracted.
 
 ## Related
 
